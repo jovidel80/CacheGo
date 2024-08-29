@@ -10,7 +10,7 @@ import (
 	"google.golang.org/api/option"
 )
 
-type FirestoreClient struct {
+type FirebaseApp struct {
 	client *firestore.Client
 }
 
@@ -34,17 +34,25 @@ func NewFirestoreClient(ctx context.Context, appInit FirebaseAppInitFunc, firest
 		return nil, fmt.Errorf("error getting firestore client: %v", err)
 
 	}
-	return &FirestoreClient{client: client}, nil
+	return &FirebaseApp{client: client}, nil
 }
 
-func (fb *FirestoreClient) GetDocFromCollection(ctx context.Context, colName string, docName string) (interface{}, error) {
-	ref, err := fb.client.Collection(colName).Doc(docName).Get(ctx)
+var getDoc = func(f *FirebaseApp, ctx context.Context, colName string, docName string) (*firestore.DocumentSnapshot, error) {
+	return f.client.Collection(colName).Doc(docName).Get(ctx)
+}
+
+func (f *FirebaseApp) GetDocFromCollection(ctx context.Context, colName string, docName string) (interface{}, error) {
+	ref, err := getDoc(f, ctx, colName, docName)
 	if err != nil {
 		return nil, fmt.Errorf("error getting doc: %v", err)
 	}
 	return ref, nil
 }
 
-func (fb *FirestoreClient) Close() error {
-	return fb.client.Close()
+var closeFunc = func(f *FirebaseApp) error {
+	return f.client.Close()
+}
+
+func (f *FirebaseApp) Close() error {
+	return closeFunc(f)
 }
