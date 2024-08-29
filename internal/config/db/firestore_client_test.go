@@ -12,33 +12,6 @@ import (
 	"google.golang.org/api/option"
 )
 
-type MockFirebaseApp struct {
-	FirestoreFunc func(ctx context.Context) (*firestore.Client, error)
-}
-
-func (m *MockFirebaseApp) Firestore(ctx context.Context) (*firestore.Client, error) {
-	if m.FirestoreFunc != nil {
-		return m.FirestoreFunc(ctx)
-	}
-	return &firestore.Client{}, nil
-}
-
-type MockFirestoreClient struct {
-	CollectionFunc func(path string) *firestore.CollectionRef
-	CloseFunc      func() error
-}
-
-func (m *MockFirestoreClient) Collection(path string) *firestore.CollectionRef {
-	return m.CollectionFunc(path)
-}
-
-func (m *MockFirestoreClient) Close() error {
-	if m.CloseFunc != nil {
-		return m.CloseFunc()
-	}
-	return nil
-}
-
 func StubFirebaseAppInit(ctx context.Context, sa option.ClientOption) (*firebaseLib.App, error) {
 	return &firebaseLib.App{}, nil
 }
@@ -100,5 +73,38 @@ func TestNewFirestoreClient_ErrorGettingFirestoreClient(t *testing.T) {
 	_, err := NewFirestoreClient(context.Background(), StubFirebaseAppInit, badFirestoreInit)
 	if err == nil {
 		t.Fatal("Expected an error, but none was received")
+	}
+}
+
+func SetClose() {
+	closeFunc = func(_ *FirebaseApp) error {
+		return nil
+	}
+}
+
+func TestFirestoreClient_Close(t *testing.T) {
+	os.Setenv("FIREBASE_CREDENTIALS_CDP_PATH", "mock-path")
+	client, _ := NewFirestoreClient(context.Background(), StubFirebaseAppInit, StubFirestoreInit)
+	SetClose()
+	err := client.Close()
+
+	if err != nil {
+		t.Fatalf("Did not expect an error, but got: %v", err)
+	}
+}
+
+func SetGetDocFromCollection(ctx context.Context, colName string, docName string) {
+	getDoc = func(_ *FirebaseApp, _ context.Context, _ string, _ string) (*firestore.DocumentSnapshot, error) {
+		return &firestore.DocumentSnapshot{}, nil
+	}
+}
+
+func TestFirestoreClient_GetDocFromCollection(t *testing.T) {
+	os.Setenv("FIREBASE_CREDENTIALS_CDP_PATH", "mock-path")
+	client, _ := NewFirestoreClient(context.Background(), StubFirebaseAppInit, StubFirestoreInit)
+	SetGetDocFromCollection(context.Background(), "test", "test")
+	_, err := client.GetDocFromCollection(context.Background(), "test", "test")
+	if err != nil {
+		t.Fatalf("Did not expect an error, but got: %v", err)
 	}
 }
